@@ -42,8 +42,8 @@ class Writer extends Subscriber {
     super(pub)
   }
 
-  pull(): Message {
-    let msg: Message = this.queue.pop();
+  async pull(): Promise <Message> {
+    let msg: Message = await this.queue.pop();
     console.log(msg.value);
     return msg
   }
@@ -59,7 +59,7 @@ class AsyncQueue {
   constructor(){
     this.values = new Array<Message>()
   }
-  push(m: Message): void {
+  async push(m: Message): Promise<void> {
     this.values.push(m)
   }
   async pop(): Promise<Message> {
