@@ -69,6 +69,26 @@ class AsyncQueue {
   }
 }
 
+class Semaphore {
+  numElems:number;
+
+  get():Promise<any>{
+    if(this.numElems > 0){
+      return
+    } else{
+      return new Promise((resolve,reject) => {
+
+    });
+    }
+  }
+
+  add():void{
+    this.numElems++;
+  }
+
+
+}
+
 
 const p1 = new NumberGenerator();
 const s1 = new Writer(p1);
