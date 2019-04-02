@@ -1,117 +1,81 @@
-import { readFileSync, fstat } from 'fs'
+class Publisher {
+  queue : AsyncQueue
+  setQueue(queue: AsyncQueue){
+    this.queue = queue
+  }
+}
 
-interface Filter {
-    next(): Message
-    hasNext(): Boolean
+class Subscriber {
+  queue: AsyncQueue
+  constructor(public pub: Publisher) {
+    this.queue = new AsyncQueue()
+    pub.setQueue(this.queue);
+  }
+
+  pull(){
+
+
+  }
+}
+
+class NumberGenerator extends Publisher{
+  num: number
+  constructor(){
+    super()
+    this.num = 1
+  }
+
+  push(): void{
+    let n: number = this.nextInt();
+    let msg: Message = new Message(n);
+    this.queue.push(msg);
+  }
+
+  nextInt() {
+    return (this.num++)
+  }
+
+}
+
+class Writer extends Subscriber {
+  constructor(public pub: Publisher){
+    super(pub)
+  }
+
+  pull(): Message {
+    let msg: Message = this.queue.pop();
+    console.log(msg.value);
+    return msg
+  }
 }
 
 class Message {
-    constructor(public readonly value: any) { }
-    static none = new Message(null)
+  constructor(public value: any){}
 }
 
-// class Concatenate implements Filter{
-//     constructor(public readonly a: Filter, public readonly b: Filter) { }
+class AsyncQueue {
+  values: Array<Message>;
 
-//     do(): Message {
-//         return new Message(this.a.do().value.toString() + this.b.do().value.toString())
-//     }
-// }
-
-// class ConstantString implements Filter {
-//     constructor(public readonly c: string) {}
-
-//     do(): Message {
-//         return new Message(this.c)
-//     }
-// }
-
-class ToUpperCase implements Filter {
-    constructor(public readonly f: Filter) { }
-    next(): Message {
-       return new Message(this.f.next().value.toUpperCase())
-    }
-
-    hasNext(): Boolean {
-        return this.f.hasNext()
-    }
+  constructor(){
+    this.values = new Array<Message>()
+  }
+  push(m: Message): void {
+    this.values.push(m)
+  }
+  async pop(): Promise<Message> {
+    //tem de bloquear á espera de um push
+    //semaforos - problema consumidor-produtor
+    return this.values.shift();
+  }
 }
 
-class Writer implements Filter {
-    constructor(public readonly f: Filter) { }
-    next(): Message {
-        console.log(this.f.next().value.toString())
-        return Message.none
-    }
 
-    hasNext(): Boolean {
-        return this.f.hasNext()
-    }
-}
+const p1 = new NumberGenerator();
+const s1 = new Writer(p1);
+p1.push();
+p1.push();
+s1.pull();
+p1.push();
+s1.pull();
+s1.pull();
 
-class FileLineReader implements Filter {
-    lines: string[]
-    constructor(public readonly fileName: string) {
-        this.lines = readFileSync(fileName, 'utf-8').split('\n')
-    }
-
-    next(): Message {
-        return new Message(this.lines.shift())
-    }
-
-    hasNext(): Boolean {
-        return this.lines.length > 0
-    }
-}
-
-class SlowFileLineReader extends FileLineReader {
-    constructor(public readonly fileName: string) {
-        super(fileName)
-    }  
-
-    delay(millis: number) {
-        const date = new Date()
-        let curDate = null
-        do { 
-            curDate = new Date() 
-        } while (curDate.getTime() - date.getTime() < millis)
-    }
-
-    next(): Message {
-        this.delay(2000)
-        return new Message(this.lines.shift())
-    }
-}
-
-class Join implements Filter {
-    fs: Filter[]
-    currentFilter = 0
-
-    constructor(...fs: Filter[]) { 
-        this.fs = fs
-    }
-
-    next(): Message {
-        const f = this.fs[this.currentFilter]
-        this.currentFilter = (this.currentFilter + 1) % this.fs.length
-        if (f.hasNext()) return f.next()
-        else return this.next()
-    }
-
-    hasNext(): Boolean {
-        return this.fs.filter(f => f.hasNext()).length > 0
-    }
-}
-
-function iterate(f: Filter) {
-    while(f.hasNext()) { 
-        f.next()
-    }  
-}
-
-const f1 = new SlowFileLineReader('./best15.txt')
-const f2 = new FileLineReader('./best-mieic.txt')
-
-const r1 = new Writer(new ToUpperCase(new Join(f1, f2)))
-
-iterate(r1)
