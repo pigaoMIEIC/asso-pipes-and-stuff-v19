@@ -17,6 +17,7 @@
     },
     "scripts": {
         "build": "tsc",
-        "start": "tsc; node build/main.js"
+        "start": "tsc; node build/main.js",
+        "start_win": "tsc && node build/main.js"
     }
 }
