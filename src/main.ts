@@ -1,17 +1,13 @@
 import { log } from "util";
 
 class Publisher {
-  queue : AsyncQueue
-  setQueue(queue: AsyncQueue){
-    this.queue = queue
-  }
+  queue : AsyncQueue = new AsyncQueue()
 }
 
 class Subscriber {
   queue: AsyncQueue
   constructor(public pub: Publisher) {
-    this.queue = new AsyncQueue()
-    pub.setQueue(this.queue);
+    this.queue = pub.queue
   }
 
   pull(){
@@ -57,7 +53,7 @@ class Message {
 
 class AsyncQueue {
   values: Array<Message>;
-  semaphore = new Semaphore
+  semaphore = new Semaphore()
   constructor(){
     this.values = new Array<Message>()
   }
@@ -78,13 +74,10 @@ class Semaphore {
 
   async get():Promise<any>{
     if (this.numElems == 0 || this.promises.length > 0)
-          await new Promise(this.promiseFunc)
+        await new Promise(r => this.promises.unshift(r))
       this.numElems -= 1
   }
 
-  promiseFunc(r: ()=>void): void {
-    this.promises.unshift(r)
-  }
 
   add():void{
     this.numElems += 1
@@ -95,11 +88,13 @@ class Semaphore {
 
 const p1 = new NumberGenerator();
 const s1 = new Writer(p1);
+const s2 = new Writer(p1);
 s1.pull();
 s1.pull();
-s1.pull();
+s2.pull();
+p1.push();
+s2.pull();
 p1.push();
 p1.push();
 p1.push();
-
 
