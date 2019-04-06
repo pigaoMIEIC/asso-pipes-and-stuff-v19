@@ -1,3 +1,5 @@
+import { log } from "util";
+
 class Publisher {
   queue : AsyncQueue
   setQueue(queue: AsyncQueue){
@@ -55,47 +57,49 @@ class Message {
 
 class AsyncQueue {
   values: Array<Message>;
-
+  semaphore = new Semaphore
   constructor(){
     this.values = new Array<Message>()
   }
   async push(m: Message): Promise<void> {
     this.values.push(m)
+    this.semaphore.add()
   }
   async pop(): Promise<Message> {
-    //tem de bloquear á espera de um push
-    //semaforos - problema consumidor-produtor
+    await this.semaphore.get();
     return this.values.shift();
   }
 }
 
+
 class Semaphore {
-  numElems:number;
+  numElems:number = 0;
+  private promises = Array<() => void>()
 
-  get():Promise<any>{
-    if(this.numElems > 0){
-      return
-    } else{
-      return new Promise((resolve,reject) => {
+  async get():Promise<any>{
+    if (this.numElems == 0 || this.promises.length > 0)
+          await new Promise(this.promiseFunc)
+      this.numElems -= 1
+  }
 
-    });
-    }
+  promiseFunc(r: ()=>void): void {
+    this.promises.unshift(r)
   }
 
   add():void{
-    this.numElems++;
+    this.numElems += 1
+    if (this.promises.length > 0) this.promises.pop()()
   }
-
-
 }
 
 
 const p1 = new NumberGenerator();
 const s1 = new Writer(p1);
-p1.push();
-p1.push();
-s1.pull();
-p1.push();
 s1.pull();
 s1.pull();
+s1.pull();
+p1.push();
+p1.push();
+p1.push();
+
 
