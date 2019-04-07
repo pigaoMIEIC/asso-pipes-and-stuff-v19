@@ -1,5 +1,5 @@
 const isArraySorted = require('is-array-sorted')
-import {UnlimitedAsyncQueue} from './main'
+import {UnlimitedAsyncQueue} from './scenario1'
 
 async function testAsyncQueueBehavior(nOps: number): Promise<Boolean> {
     const result = new Array<number>()
