@@ -1,143 +1,122 @@
-import { log } from "util";
-import { timingSafeEqual, pbkdf2 } from "crypto";
+import { readFileSync, fstat } from 'fs'
 
-//Generic Publisher, Subscriber and Message
-abstract class Publisher {
-    private subscribers: Array<IPushObserver>
-
-    constructor() {
-        this.subscribers = new Array<IPushObserver>()
-    }
-
-    notifySubscribers(m: Message) : void {
-        for (let subscriber of this.subscribers)
-            subscriber.notify(m)
-    }
-
-    addSubscriber(subscriber: IPushObserver) {
-        this.subscribers.push(subscriber)
-    }
-
-    async abstract push(): Promise<any>
-}
-
-abstract class Subscriber implements IPushObserver {
-    queue: AsyncQueue<Message>
-
-    constructor() {
-        this.queue = new UnlimitedAsyncQueue<Message>()
-    }
-
-    notify(msg: Message): void {
-        this.queue.enqueue(msg)
-    }
-
-    async abstract pull(): Promise<Message>
+interface Filter {
+    next(): Message
+    hasNext(): Boolean
 }
 
 class Message {
-    constructor(public value: any) { }
+    constructor(public readonly value: any) { }
+    static none = new Message(null)
 }
 
-interface IPushObserver {
-    notify(msg: Message): void
-}
+// class Concatenate implements Filter{
+//     constructor(public readonly a: Filter, public readonly b: Filter) { }
 
-//Some concrete Publishers and Subscribers
-class NumberGenerator extends Publisher {
-    num: number
-    constructor() {
-        super()
-        this.num = 1
+//     do(): Message {
+//         return new Message(this.a.do().value.toString() + this.b.do().value.toString())
+//     }
+// }
+
+// class ConstantString implements Filter {
+//     constructor(public readonly c: string) {}
+
+//     do(): Message {
+//         return new Message(this.c)
+//     }
+// }
+
+
+
+class ToUpperCase implements Filter {
+    constructor(public readonly f: Filter) { }
+    next(): Message {
+       return new Message(this.f.next().value.toUpperCase())
     }
 
-    async push() {
-        let n: number = this.nextInt();
-        let msg: Message = new Message(n);
-        this.notifySubscribers(msg)
-    }
-
-    nextInt() {
-        return (this.num++)
-    }
-}
-
-class Writer extends Subscriber {
-    constructor() {
-        super()
-    }
-
-    async pull(): Promise<Message> {
-        const msg = await this.queue.dequeue()
-        console.log("unqueued " + msg)
-        return msg
+    hasNext(): Boolean {
+        return this.f.hasNext()
     }
 }
 
-//Infrastructure classes
-export interface AsyncQueue<T> {
-    enqueue(msg: T): void
-    dequeue(): Promise<T>
-} 
-
-export class UnlimitedAsyncQueue<T> implements AsyncQueue<T>{
-    values: Array<T>;
-    semaphore = new Semaphore(0)
-
-    constructor() {
-        this.values = new Array<T>()
+class Writer implements Filter {
+    constructor(public readonly f: Filter) { }
+    next(): Message {
+        console.log(this.f.next().value.toString())
+        return Message.none
     }
 
-    enqueue(m: T): void {
-        this.values.push(m)
-        this.semaphore.signal()
-    }
-
-    async dequeue(): Promise<T> {
-        await this.semaphore.wait();
-        return this.values.shift();
+    hasNext(): Boolean {
+        return this.f.hasNext()
     }
 }
 
-class Semaphore {
-    private waiting = Array<() => void>()
-
-    constructor(private S: number){}
-
-    async wait() {
-        if (this.S == 0 || this.waiting.length > 0)
-            await new Promise(r => this.waiting.unshift(r))
-        this.S -= 1
+class FileLineReader implements Filter {
+    lines: string[]
+    constructor(public readonly fileName: string) {
+        this.lines = readFileSync(fileName, 'utf-8').split('\n')
     }
 
-    signal(): void {
-        this.S += 1
-        if (this.waiting.length > 0)
-            this.waiting.pop()()
+    next(): Message {
+        return new Message(this.lines.shift())
+    }
+
+    hasNext(): Boolean {
+        return this.lines.length > 0
     }
 }
 
-setInterval(() => { }, 1000);
-(async () => {
-    console.log("Start")
-    const p1 = new NumberGenerator()
-    const s1 = new Writer()
-    const s2 = new Writer()
-    const s3 = new Writer()
+class SlowFileLineReader extends FileLineReader {
+    constructor(public readonly fileName: string) {
+        super(fileName)
+    }  
 
-    p1.addSubscriber(s1)
-    p1.addSubscriber(s2)
-    p1.addSubscriber(s3)
-    
-    p1.push()
-    s1.pull().then(res => console.log(res.value))
-    s2.pull().then(res => console.log(res.value))
-    s3.pull().then(res => console.log(res.value))
-    s1.pull().then(res => console.log(res.value))
-    s2.pull().then(res => console.log(res.value))
-    s3.pull().then(res => console.log(res.value))
-    p1.push()
+    delay(millis: number) {
+        const date = new Date()
+        let curDate = null
+        do { 
+            curDate = new Date() 
+        } while (curDate.getTime() - date.getTime() < millis)
+    }
 
-    //process.exit()
-})()
+    next(): Message {
+        this.delay(2000)
+        return new Message(this.lines.shift())
+    }
+}
 
+// class Join implements Filter {
+//     fs: Filter[]
+//     currentFilter = 0
+
+//     constructor(...fs: Filter[]) { 
+//         this.fs = fs
+//     }
+
+//     next(): Message {
+//         const f = this.fs[this.currentFilter]
+//         this.currentFilter = (this.currentFilter + 1) % this.fs.length
+//         if (f.hasNext()) return f.next()
+//         else return this.next()
+//     }
+
+//     hasNext(): Boolean {
+//         return this.fs.filter(f => f.hasNext()).length > 0
+//     }
+// }
+
+function iterate(f: Filter) {
+    while(f.hasNext()) { 
+        f.next()
+    }  
+}
+
+//const f1 = new SlowFileLineReader('./best15.txt')
+// const f2 = new FileLineReader('./best-mieic.txt')
+
+// const r1 = new Writer(new ToUpperCase(new Join(f1, f2)))
+const r1 = new Writer(new ToUpperCase(new SlowFileLineReader("./best15.txt")));
+
+
+
+iterate(r1)

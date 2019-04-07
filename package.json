@@ -23,6 +23,8 @@
         "start_win": "tsc && node build/main.js",
         "tests": "tsc && node build/asyncqueue-test.js",
         "scenario1": "tsc && node build/scenario1.js",
-        "scenario2": "tsc && node build/scenario2.js"
+        "scenario2": "tsc && node build/scenario2.js",
+        "scenario3": "tsc && node build/scenario3.js",
+        "scenario4": "tsc && node build/scenario4.js"
     }
 }
