@@ -1,10 +1,8 @@
 //Generic Publisher, Subscriber and Message using Observers
 abstract class Publisher {
-    public queue: AsyncQueue<Message>
     private subscribers: Array<IPushObserver>
 
     constructor() {
-        this.queue = new UnlimitedAsyncQueue<Message>()
         this.subscribers = new Array<IPushObserver>()
     }
 

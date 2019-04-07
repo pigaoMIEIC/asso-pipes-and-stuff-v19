@@ -3,11 +3,9 @@ import { timingSafeEqual, pbkdf2 } from "crypto";
 
 //Generic Publisher, Subscriber and Message
 abstract class Publisher {
-    public queue: AsyncQueue<Message>
     private subscribers: Array<IPushObserver>
 
     constructor() {
-        this.queue = new UnlimitedAsyncQueue<Message>()
         this.subscribers = new Array<IPushObserver>()
     }
 
