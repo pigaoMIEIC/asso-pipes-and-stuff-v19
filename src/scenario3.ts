@@ -1,7 +1,4 @@
-import { log } from "util";
-import { timingSafeEqual, pbkdf2 } from "crypto";
-
-//Generic Publisher, Subscriber and Message
+//Generic Publisher, Subscriber and Message using Observers
 abstract class Publisher {
     public queue: AsyncQueue<Message>
     private subscribers: Array<IPushObserver>
