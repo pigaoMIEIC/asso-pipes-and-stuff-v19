@@ -49,7 +49,7 @@ setInterval(() => { }, 1000); // run program forever until an explicit exit occu
         counter += +success
     }
     console.log(counter + "/" + limit + " tests passed")
-    process.exit()
+    //process.exit()
 })()
 
 

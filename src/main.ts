@@ -108,11 +108,19 @@ setInterval(() => { }, 1000);
     const s1 = new Writer(p1)
     const s2 = new Writer(p1)
     
-    s1.pull()
-    s2.pull()
+    s1.pull().then(res => console.log(res.value))
+    s2.pull().then(res => console.log(res.value))
     p1.push()
+    p1.push()
+    s1.pull().then(res => console.log(res.value))
+    s1.pull().then(res => console.log(res.value))
+    p1.push()
+    p1.push()
+    s2.pull().then(res => console.log(res.value))
+    p1.push()
+    s2.pull().then(res => console.log(res.value))
     p1.push()
 
-    process.exit()
+    //process.exit()
 })()
 
